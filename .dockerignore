@@ -1,0 +1,9 @@
+**/.git
+**/.gitignore
+**/node_modules
+**/tmp
+**/dist
+**/build
+*.log
+.DS_Store
+

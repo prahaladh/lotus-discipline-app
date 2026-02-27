@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lotus Discipline API Tester</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 0;
+        padding: 24px;
+        background: radial-gradient(circle at top, #1b2430 0, #050711 55%);
+        color: #f5f5ff;
+      }
+      h1 {
+        margin-top: 0;
+        font-weight: 600;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        gap: 24px;
+      }
+      .card {
+        background: rgba(10, 16, 32, 0.92);
+        border-radius: 16px;
+        padding: 16px 18px 18px;
+        border: 1px solid rgba(152, 181, 255, 0.2);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      }
+      .card h2 {
+        margin-top: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 4px;
+        opacity: 0.9;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(152, 181, 255, 0.4);
+        background: rgba(9, 14, 30, 0.9);
+        color: #f5f5ff;
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+      input:focus,
+      textarea:focus {
+        outline: 2px solid #7b6cff;
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .field {
+        margin-bottom: 12px;
+      }
+      button {
+        border-radius: 999px;
+        padding: 8px 14px;
+        border: none;
+        font-size: 13px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #ff9a7b, #ff6fd8);
+        color: #0b0816;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 10px 24px rgba(255, 100, 180, 0.6);
+      }
+      button.secondary {
+        background: transparent;
+        color: #f5f5ff;
+        border: 1px solid rgba(152, 181, 255, 0.5);
+        box-shadow: none;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+        box-shadow: none;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .small {
+        font-size: 12px;
+        opacity: 0.85;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(9, 16, 40, 0.9);
+        border: 1px solid rgba(152, 181, 255, 0.3);
+        font-size: 11px;
+      }
+      .pill span.phase {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+      }
+      .phase-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+      }
+      .phase-mud {
+        background: #4b5563;
+      }
+      .phase-stem {
+        background: #22c55e;
+      }
+      .phase-bloom {
+        background: #fb7185;
+      }
+      .phase-thrive {
+        background: #facc15;
+      }
+      .lotus-visual {
+        position: relative;
+        height: 160px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 10%, #ffe9ff 0, #1f2933 55%);
+        margin-bottom: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+      .water {
+        position: absolute;
+        inset: 55% 0 0 0;
+        background: radial-gradient(circle at 50% 0%, #4f46e5 0, #020617 60%);
+      }
+      .lotus {
+        position: absolute;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        width: 120px;
+        height: 80px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .petal {
+        width: 28px;
+        height: 56px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #fef9c3, #fb7185);
+        opacity: 0.18;
+        transform-origin: bottom center;
+        filter: blur(0.3px);
+      }
+      .petal.center {
+        opacity: 0.95;
+        filter: none;
+      }
+      .petal.left {
+        transform: translateX(-14px) rotate(-20deg);
+      }
+      .petal.right {
+        transform: translateX(14px) rotate(20deg);
+      }
+      .lotus-base {
+        position: absolute;
+        bottom: 0;
+        width: 80px;
+        height: 24px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 50% 0, #bbf7d0 0, #16a34a 70%);
+        filter: blur(0.3px);
+      }
+      .growth-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .growth-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #22c55e, #fbbf24, #fb7185);
+        transition: width 0.35s ease-out;
+      }
+      pre {
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 11px;
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+      ul.habits {
+        list-style: none;
+        padding: 0;
+        margin: 4px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+      }
+      ul.habits li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 6px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.75);
+      }
+      .habit-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .habit-name {
+        font-weight: 500;
+      }
+      .habit-sub {
+        opacity: 0.8;
+      }
+      .habit-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .habit-actions input {
+        width: 60px;
+        padding: 4px 6px;
+        font-size: 11px;
+      }
+      .habit-actions button {
+        padding: 4px 10px;
+        font-size: 11px;
+        box-shadow: none;
+      }
+      .status {
+        min-height: 16px;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .status.error {
+        color: #fecaca;
+      }
+      .status.ok {
+        color: #bbf7d0;
+      }
+      @media (max-width: 800px) {
+        .container {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        body {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div>
+        <h1>Lotus Discipline Tester</h1>
+        <p class="small">
+          Uses your local API at
+          <code>http://localhost:8080/api</code>. Register once, then test daily
+          check‑in, completions, and lotus status.
+        </p>
+
+        <div class="card" style="margin-top: 12px">
+          <h2>1. Register user & habits</h2>
+          <div class="field">
+            <label for="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value="test@example.com"
+            />
+          </div>
+          <div class="field">
+            <label for="habits"
+              >Habits (one per line, format:
+              <code>Name,goalMinutes</code>)</label
+            >
+            <textarea id="habits">
+Lotus Sit,2
+Run,20
+Read,30</textarea
+            >
+          </div>
+          <div class="actions">
+            <button id="registerBtn">Register / Update</button>
+            <button id="clearUserBtn" class="secondary">Clear stored user</button>
+          </div>
+          <div id="registerStatus" class="status"></div>
+          <p class="small">
+            Current stored userId:
+            <code id="storedUserId">none</code>
+          </p>
+        </div>
+
+        <div class="card" style="margin-top: 16px">
+          <h2>
+            2. Today's Lotus
+            <span id="phasePill" class="pill">
+              <span
+                id="phaseDot"
+                class="phase-dot phase-mud"
+                aria-hidden="true"
+              ></span>
+              <span class="phase" id="phaseLabel">MUD</span>
+              <span id="lotusLabel">Seedling</span>
+            </span>
+          </h2>
+
+          <div class="lotus-visual">
+            <div class="water"></div>
+            <div class="lotus">
+              <div class="petal left"></div>
+              <div class="petal center"></div>
+              <div class="petal right"></div>
+              <div class="lotus-base"></div>
+            </div>
+          </div>
+
+          <div class="growth-bar">
+            <div id="growthFill" class="growth-fill"></div>
+          </div>
+          <p class="small">
+            Growth:
+            <span id="growthText">0%</span>
+          </p>
+
+          <div class="actions">
+            <button id="checkinBtn" class="secondary">
+              Refresh daily check‑in
+            </button>
+            <button id="lotusStatusBtn" class="secondary">
+              Only lotus status
+            </button>
+          </div>
+          <div id="lotusStatus" class="status"></div>
+
+          <div class="field" style="margin-top: 10px">
+            <label>Today's habits</label>
+            <ul id="habitsList" class="habits"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Raw API response</h2>
+          <p class="small">
+            Shows the latest JSON from
+            <code>/daily-check-in</code> or
+            <code>/lotus-status</code>.
+          </p>
+          <pre><code id="responseBox">{}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:8080/api";
+
+      const emailInput = document.getElementById("email");
+      const habitsInput = document.getElementById("habits");
+      const registerBtn = document.getElementById("registerBtn");
+      const clearUserBtn = document.getElementById("clearUserBtn");
+      const registerStatus = document.getElementById("registerStatus");
+      const storedUserIdEl = document.getElementById("storedUserId");
+
+      const checkinBtn = document.getElementById("checkinBtn");
+      const lotusStatusBtn = document.getElementById("lotusStatusBtn");
+      const lotusStatusMsg = document.getElementById("lotusStatus");
+
+      const phasePill = document.getElementById("phasePill");
+      const phaseDot = document.getElementById("phaseDot");
+      const phaseLabel = document.getElementById("phaseLabel");
+      const lotusLabel = document.getElementById("lotusLabel");
+      const growthFill = document.getElementById("growthFill");
+      const growthText = document.getElementById("growthText");
+
+      const habitsList = document.getElementById("habitsList");
+      const responseBox = document.getElementById("responseBox");
+
+      function getUserId() {
+        return localStorage.getItem("lotus_user_id") || "";
+      }
+
+      function setUserId(id) {
+        if (id) {
+          localStorage.setItem("lotus_user_id", id);
+        } else {
+          localStorage.removeItem("lotus_user_id");
+        }
+        storedUserIdEl.textContent = id || "none";
+      }
+
+      function setStatus(el, msg, ok = true) {
+        el.textContent = msg;
+        el.className = "status " + (ok ? "ok" : "error");
+      }
+
+      function safeJson(obj) {
+        try {
+          return JSON.stringify(obj, null, 2);
+        } catch {
+          return String(obj);
+        }
+      }
+
+      function updatePhaseVisual(phase, lotusStatus, pct) {
+        const p = (phase || "").toLowerCase();
+        const l = (lotusStatus || "").toLowerCase();
+        phaseDot.className = "phase-dot";
+        if (p === "mud") phaseDot.classList.add("phase-mud");
+        else if (p === "stem") phaseDot.classList.add("phase-stem");
+        else if (p === "bloom") phaseDot.classList.add("phase-bloom");
+        else if (p === "thrive") phaseDot.classList.add("phase-thrive");
+
+        phaseLabel.textContent = (p || "mud").toUpperCase();
+        lotusLabel.textContent =
+          l.charAt(0).toUpperCase() + l.slice(1).toLowerCase() || "Seedling";
+
+        const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+        growthFill.style.width = clamped + "%";
+        growthText.textContent = clamped + "%";
+      }
+
+      function renderHabits(habits) {
+        habitsList.innerHTML = "";
+        if (!Array.isArray(habits) || habits.length === 0) {
+          habitsList.innerHTML =
+            '<li class="small" style="opacity:0.8">No habits for today.</li>';
+          return;
+        }
+        habits.forEach((h) => {
+          const li = document.createElement("li");
+
+          const meta = document.createElement("div");
+          meta.className = "habit-meta";
+
+          const name = document.createElement("div");
+          name.className = "habit-name";
+          name.textContent = h.name || "(unnamed)";
+
+          const sub = document.createElement("div");
+          sub.className = "habit-sub";
+          sub.textContent = `Today: ${h.currentMinutes} min (goal ${h.goalMinutes} min)`;
+
+          meta.appendChild(name);
+          meta.appendChild(sub);
+
+          const actions = document.createElement("div");
+          actions.className = "habit-actions";
+
+          const minsInput = document.createElement("input");
+          minsInput.type = "number";
+          minsInput.min = "1";
+          minsInput.value = h.currentMinutes || 1;
+          minsInput.title = "Minutes completed";
+
+          const btn = document.createElement("button");
+          btn.textContent = "Complete";
+          btn.className = "secondary";
+          btn.addEventListener("click", () => {
+            const mins = Number(minsInput.value || "0");
+            if (!mins || mins <= 0) {
+              alert("Enter minutes > 0");
+              return;
+            }
+            completeHabit(h.id, mins);
+          });
+
+          actions.appendChild(minsInput);
+          actions.appendChild(btn);
+
+          li.appendChild(meta);
+          li.appendChild(actions);
+          habitsList.appendChild(li);
+        });
+      }
+
+      async function apiRequest(path, options = {}) {
+        const url = API_BASE + path;
+        const res = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          ...options,
+        });
+        const text = await res.text();
+        let json;
+        try {
+          json = text ? JSON.parse(text) : null;
+        } catch {
+          json = text;
+        }
+        if (!res.ok) {
+          const err =
+            (json && json.error) ||
+            (typeof json === "string" ? json : res.statusText);
+          throw new Error(err || "Request failed");
+        }
+        return json;
+      }
+
+      registerBtn.addEventListener("click", async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+          setStatus(registerStatus, "Email is required", false);
+          return;
+        }
+
+        const lines = habitsInput.value
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (lines.length === 0) {
+          setStatus(registerStatus, "Add at least one habit line", false);
+          return;
+        }
+
+        const habits = [];
+        for (const line of lines) {
+          const [name, minutesStr] = line.split(",").map((s) => s.trim());
+          const minutes = Number(minutesStr || "0");
+          if (!name || !minutes) {
+            setStatus(
+              registerStatus,
+              `Invalid habit line: "${line}" (use "Name,minutes")`,
+              false
+            );
+            return;
+          }
+          habits.push({ name, goalMinutes: minutes });
+        }
+
+        registerBtn.disabled = true;
+        setStatus(registerStatus, "Registering...", true);
+        try {
+          const data = await apiRequest("/register", {
+            method: "POST",
+            body: JSON.stringify({ email, habits }),
+          });
+          if (data && data.userId) {
+            setUserId(data.userId);
+          }
+          setStatus(registerStatus, "Registered successfully", true);
+          responseBox.textContent = safeJson(data);
+        } catch (e) {
+          setStatus(registerStatus, e.message || "Failed to register", false);
+        } finally {
+          registerBtn.disabled = false;
+        }
+      });
+
+      clearUserBtn.addEventListener("click", () => {
+        setUserId("");
+        setStatus(registerStatus, "Cleared stored userId", true);
+      });
+
+      async function refreshDailyCheckin() {
+        const userId = getUserId();
+        if (!userId) {
+          setStatus(lotusStatusMsg, "Register first to get a userId", false);
+          return;
+        }
+        checkinBtn.disabled = true;
+        setStatus(lotusStatusMsg, "Loading daily check‑in...", true);
+        try {
+          const data = await apiRequest(
+            `/daily-check-in?userId=${encodeURIComponent(userId)}`
+          );
+          responseBox.textContent = safeJson(data);
+          updatePhaseVisual(data.phase, data.lotusStatus, data.growthPercent);
+          renderHabits(data.habits || []);
+          setStatus(lotusStatusMsg, "Daily check‑in loaded", true);
+        } catch (e) {
+          setStatus(lotusStatusMsg, e.message || "Failed to load check‑in", false);
+        } finally {
+          checkinBtn.disabled = false;
+        }
+      }
+
+      async function fetchLotusStatusOnly() {
+        const userId = getUserId();
+        if (!userId) {
+          setStatus(lotusStatusMsg, "Register first to get a userId", false);
+          return;
+        }
+        lotusStatusBtn.disabled = true;
+        setStatus(lotusStatusMsg, "Loading lotus status...", true);
+        try {
+          const data = await apiRequest(
+            `/lotus-status?userId=${encodeURIComponent(userId)}`
+          );
+          responseBox.textContent = safeJson(data);
+          updatePhaseVisual(data.phase, data.lotusStatus, data.growthPercent);
+          setStatus(lotusStatusMsg, "Lotus status loaded", true);
+        } catch (e) {
+          setStatus(
+            lotusStatusMsg,
+            e.message || "Failed to load lotus status",
+            false
+          );
+        } finally {
+          lotusStatusBtn.disabled = false;
+        }
+      }
+
+      async function completeHabit(habitId, minutes) {
+        const userId = getUserId();
+        if (!userId) {
+          alert("Register first to get a userId");
+          return;
+        }
+        try {
+          const data = await apiRequest(
+            `/complete-task?userId=${encodeURIComponent(userId)}`,
+            {
+              method: "POST",
+              body: JSON.stringify({ habitId, minutes }),
+            }
+          );
+          responseBox.textContent = safeJson(data);
+          await refreshDailyCheckin();
+        } catch (e) {
+          alert(e.message || "Failed to record completion");
+        }
+      }
+
+      checkinBtn.addEventListener("click", refreshDailyCheckin);
+      lotusStatusBtn.addEventListener("click", fetchLotusStatusOnly);
+
+      // Init UI from localStorage.
+      setUserId(getUserId());
+      updatePhaseVisual("mud", "seedling", 0);
+      renderHabits([]);
+    </script>
+  </body>
+  </html>
+

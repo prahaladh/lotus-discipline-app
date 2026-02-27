@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lotus Discipline – App Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top, #020617 0, #020617 35%, #000 80%);
+        color: #f9fafb;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        min-height: 100vh;
+        padding: 24px 12px;
+      }
+      .phone-frame {
+        width: 414px;
+        max-width: 100%;
+        height: 812px;
+        max-height: 100%;
+        border-radius: 32px;
+        padding: 18px 16px 14px;
+        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+      .phone-frame::before {
+        content: "";
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 120px;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.95);
+      }
+      .app {
+        position: relative;
+        flex: 1;
+        margin-top: 26px;
+        border-radius: 24px;
+        overflow: hidden;
+        background: radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%);
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        padding: 14px 16px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      header .subtitle {
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      .phase-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        font-size: 11px;
+      }
+      .phase-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+      }
+      .phase-mud {
+        background: #4b5563;
+      }
+      .phase-stem {
+        background: #22c55e;
+      }
+      .phase-bloom {
+        background: #fb7185;
+      }
+      .phase-thrive {
+        background: #facc15;
+      }
+      .screen {
+        flex: 1;
+        display: none;
+        flex-direction: column;
+      }
+      .screen.active {
+        display: flex;
+      }
+      .lotus-hero {
+        position: relative;
+        margin: 2px 14px 10px;
+        border-radius: 20px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 8%, #fef9c3 0, #0b1120 56%);
+        height: 190px;
+        border: 1px solid rgba(248, 250, 252, 0.18);
+      }
+      .lotus-hero .water {
+        position: absolute;
+        inset: 58% 0 0 0;
+        background: radial-gradient(circle at 50% 0%, #1d4ed8 0, #020617 65%);
+      }
+      .lotus-hero .lotus {
+        position: absolute;
+        left: 50%;
+        bottom: 26px;
+        transform: translateX(-50%);
+        width: 140px;
+        height: 90px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+      }
+      .petal {
+        width: 26px;
+        height: 58px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #fefce8, #f97373);
+        opacity: 0.22;
+        transform-origin: bottom center;
+        filter: blur(0.4px);
+      }
+      .petal.center {
+        opacity: 0.98;
+        filter: none;
+      }
+      .petal.left {
+        transform: translateX(-18px) rotate(-18deg);
+      }
+      .petal.right {
+        transform: translateX(18px) rotate(18deg);
+      }
+      .lotus-base {
+        position: absolute;
+        bottom: 0;
+        width: 88px;
+        height: 26px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 50% 0, #bbf7d0 0, #15803d 70%);
+      }
+      .lotus-caption {
+        position: absolute;
+        top: 10px;
+        left: 14px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.85;
+      }
+      .lotus-phase-label {
+        position: absolute;
+        top: 24px;
+        left: 14px;
+        font-size: 17px;
+        font-weight: 600;
+      }
+      .lotus-status-label {
+        position: absolute;
+        top: 24px;
+        right: 16px;
+        font-size: 13px;
+        opacity: 0.9;
+      }
+      .growth-track {
+        position: absolute;
+        bottom: 12px;
+        left: 14px;
+        right: 14px;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.85);
+        overflow: hidden;
+      }
+      .growth-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #22c55e, #facc15, #fb7185);
+        transition: width 0.35s ease-out;
+      }
+      .growth-text {
+        position: absolute;
+        bottom: 22px;
+        right: 16px;
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      .content {
+        flex: 1;
+        padding: 6px 14px 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      .section-title {
+        font-size: 14px;
+        margin: 4px 0;
+        font-weight: 500;
+      }
+      .section-subtitle {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-bottom: 8px;
+      }
+      .card {
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        padding: 10px 10px 10px;
+        margin-bottom: 8px;
+      }
+      .field {
+        margin-bottom: 10px;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        border-radius: 11px;
+        padding: 7px 10px;
+        border: 1px solid rgba(71, 85, 105, 0.9);
+        background: rgba(15, 23, 42, 0.96);
+        color: #f9fafb;
+        font-size: 13px;
+      }
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+      input:focus,
+      textarea:focus {
+        outline: 2px solid #6366f1;
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      .btn {
+        border-radius: 999px;
+        width: 100%;
+        padding: 10px 14px;
+        border: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(135deg, #fb7185, #fbbf24);
+        color: #111827;
+        margin-top: 4px;
+        box-shadow: 0 12px 30px rgba(248, 113, 113, 0.65);
+      }
+      .btn.secondary {
+        background: transparent;
+        color: #e5e7eb;
+        border: 1px solid rgba(148, 163, 184, 0.9);
+        box-shadow: none;
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: default;
+        box-shadow: none;
+      }
+      .info-text {
+        font-size: 11px;
+        opacity: 0.8;
+        margin-top: 4px;
+      }
+      .checklist {
+        list-style: none;
+        padding: 0;
+        margin: 4px 0 0;
+      }
+      .checklist li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        padding: 4px 0;
+      }
+      .check-circle {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+      }
+      .check-circle.completed {
+        background: radial-gradient(circle at 30% 0%, #bbf7d0 0, #22c55e 60%);
+        border-color: transparent;
+        color: #052e16;
+      }
+      .habits-list {
+        list-style: none;
+        padding: 0;
+        margin: 6px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .habit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid rgba(30, 64, 175, 0.7);
+      }
+      .habit-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .habit-name {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .habit-meta {
+        font-size: 11px;
+        opacity: 0.75;
+      }
+      .habit-action {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .habit-action input {
+        width: 54px;
+        padding: 4px 6px;
+        font-size: 11px;
+      }
+      .habit-action button {
+        font-size: 11px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        border: none;
+        background: rgba(59, 130, 246, 0.9);
+        color: #e5e7eb;
+        cursor: pointer;
+      }
+      .status-bar {
+        font-size: 11px;
+        padding-top: 3px;
+        min-height: 16px;
+        opacity: 0.85;
+      }
+      .status-ok {
+        color: #bbf7d0;
+      }
+      .status-error {
+        color: #fecaca;
+      }
+      .footer {
+        padding: 4px 14px 8px;
+        font-size: 10px;
+        opacity: 0.7;
+        text-align: center;
+      }
+      .linkish {
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone-frame">
+      <div class="app">
+        <header>
+          <div>
+            <div class="subtitle">Lotus Discipline</div>
+            <h1>Lotus Journey</h1>
+          </div>
+          <div class="phase-chip">
+            <span id="phaseDot" class="phase-dot phase-mud"></span>
+            <span id="phaseChipLabel">MUD</span>
+          </div>
+        </header>
+
+        <!-- Setup / onboarding screen -->
+        <div id="screenSetup" class="screen active">
+          <div class="lotus-hero">
+            <div class="water"></div>
+            <div class="lotus">
+              <div class="petal left"></div>
+              <div class="petal center"></div>
+              <div class="petal right"></div>
+              <div class="lotus-base"></div>
+            </div>
+            <div class="lotus-caption">Start in the mud</div>
+            <div class="lotus-phase-label">Design your habits</div>
+            <div class="lotus-status-label">Seedling</div>
+            <div class="growth-track">
+              <div class="growth-fill" style="width: 10%"></div>
+            </div>
+            <div class="growth-text">Phase 1 · Mud</div>
+          </div>
+          <div class="content">
+            <div class="section-title">Set up your Lotus</div>
+            <div class="section-subtitle">
+              Add the habits you want to grow. The app will start you in Mud
+              (Lotus Sit only), then gently increase in Stem, Bloom, and Thrive.
+            </div>
+            <div class="card">
+              <div class="field">
+                <label for="email">Email (used as your ID)</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value="test@example.com"
+                />
+              </div>
+              <div class="field">
+                <label>Habits</label>
+                <div style="display: flex; gap: 6px; margin-bottom: 6px">
+                  <input
+                    id="habitNameInput"
+                    type="text"
+                    placeholder="Habit name"
+                    style="flex: 1"
+                  />
+                  <input
+                    id="habitMinutesInput"
+                    type="number"
+                    min="1"
+                    placeholder="mins"
+                    style="width: 70px"
+                  />
+                  <select
+                    id="habitUnitSelect"
+                    style="
+                      border-radius: 11px;
+                      padding: 7px 8px;
+                      border: 1px solid rgba(71, 85, 105, 0.9);
+                      background: rgba(15, 23, 42, 0.96);
+                      color: #f9fafb;
+                      font-size: 11px;
+                    "
+                  ></select>
+                  <button
+                    id="btnAddHabit"
+                    type="button"
+                    style="
+                      border-radius: 999px;
+                      padding: 7px 10px;
+                      border: none;
+                      font-size: 11px;
+                      font-weight: 600;
+                      cursor: pointer;
+                      background: rgba(59, 130, 246, 0.95);
+                      color: #e5e7eb;
+                    "
+                  >
+                    Add
+                  </button>
+                </div>
+                <ul
+                  id="setupHabitsList"
+                  style="
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    max-height: 96px;
+                    overflow: auto;
+                    font-size: 12px;
+                  "
+                ></ul>
+                <div class="info-text">
+                  Start with at least one habit. “Lotus Sit, 2 min” is
+                  recommended as your anchor.
+                </div>
+              </div>
+              <button id="btnBegin" class="btn">Begin Lotus Journey</button>
+              <div id="setupStatus" class="status-bar"></div>
+              <div class="info-text">
+                Already have a journey? It will update your existing habits and
+                continue your current phase.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily practice screen -->
+        <div id="screenDaily" class="screen">
+          <div class="lotus-hero">
+            <div class="water"></div>
+            <div class="lotus">
+              <div class="petal left"></div>
+              <div class="petal center"></div>
+              <div class="petal right"></div>
+              <div class="lotus-base"></div>
+            </div>
+            <div class="lotus-caption">Today’s Lotus</div>
+            <div id="lotusPhaseLabel" class="lotus-phase-label">Mud</div>
+            <div id="lotusStageLabel" class="lotus-status-label">
+              Seedling · 0%
+            </div>
+            <div class="growth-track">
+              <div id="growthFill" class="growth-fill"></div>
+            </div>
+            <div id="growthText" class="growth-text">Day 1</div>
+          </div>
+          <div class="content">
+            <div class="section-title">Today’s practice</div>
+            <div class="section-subtitle" id="phaseExplanation">
+              Your lotus has just been planted. Sit for 2 minutes today.
+            </div>
+
+            <div class="card">
+              <div class="section-title" style="margin: 0 0 4px">
+                Daily checklist
+              </div>
+              <ul id="checklist" class="checklist"></ul>
+            </div>
+
+            <div class="card" style="flex: 1; min-height: 140px">
+              <div class="section-title" style="margin: 0 0 4px">
+                Habit stack
+              </div>
+              <ul id="habitsList" class="habits-list"></ul>
+            </div>
+
+            <button id="btnRefresh" class="btn secondary">
+              Refresh today
+            </button>
+            <div id="dailyStatus" class="status-bar"></div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <span id="footerUser"></span>
+          <span id="footerLink" class="linkish">Change habits</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:8080/api";
+
+      const screenSetup = document.getElementById("screenSetup");
+      const screenDaily = document.getElementById("screenDaily");
+      const emailInput = document.getElementById("email");
+      const habitNameInput = document.getElementById("habitNameInput");
+      const habitMinutesInput = document.getElementById("habitMinutesInput");
+      const habitUnitSelectEl = document.getElementById("habitUnitSelect");
+      const setupHabitsList = document.getElementById("setupHabitsList");
+      const btnAddHabit = document.getElementById("btnAddHabit");
+      const btnBegin = document.getElementById("btnBegin");
+      const btnRefresh = document.getElementById("btnRefresh");
+      const setupStatus = document.getElementById("setupStatus");
+      const dailyStatus = document.getElementById("dailyStatus");
+      const footerUser = document.getElementById("footerUser");
+      const footerLink = document.getElementById("footerLink");
+
+      const phaseDot = document.getElementById("phaseDot");
+      const phaseChipLabel = document.getElementById("phaseChipLabel");
+      const lotusPhaseLabel = document.getElementById("lotusPhaseLabel");
+      const lotusStageLabel = document.getElementById("lotusStageLabel");
+      const growthFill = document.getElementById("growthFill");
+      const growthText = document.getElementById("growthText");
+      const phaseExplanation = document.getElementById("phaseExplanation");
+      const checklistEl = document.getElementById("checklist");
+      const habitsListEl = document.getElementById("habitsList");
+
+      function getUserId() {
+        return localStorage.getItem("lotus_user_id") || "";
+      }
+      function setUserId(id) {
+        if (id) {
+          localStorage.setItem("lotus_user_id", id);
+        } else {
+          localStorage.removeItem("lotus_user_id");
+        }
+      }
+      function setLastEmail(email) {
+        localStorage.setItem("lotus_email", email || "");
+      }
+      function getLastEmail() {
+        return localStorage.getItem("lotus_email") || "";
+      }
+
+      function getSetupHabits() {
+        try {
+          const raw = localStorage.getItem("lotus_habits");
+          const parsed = raw ? JSON.parse(raw) : null;
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        // default starter habits
+        return [
+          { name: "Lotus Sit", goalMinutes: 2, unit: "minutes" },
+          { name: "Run", goalMinutes: 20, unit: "minutes" },
+          { name: "Read", goalMinutes: 10, unit: "pages" },
+        ];
+      }
+
+      function setSetupHabits(habits) {
+        localStorage.setItem("lotus_habits", JSON.stringify(habits || []));
+      }
+
+      function renderSetupHabits() {
+        const habits = getSetupHabits();
+        setupHabitsList.innerHTML = "";
+        if (!habits.length) {
+          const li = document.createElement("li");
+          li.style.opacity = "0.7";
+          li.textContent = "No habits yet. Add one above.";
+          setupHabitsList.appendChild(li);
+          return;
+        }
+        habits.forEach((h, idx) => {
+          const li = document.createElement("li");
+          li.style.display = "flex";
+          li.style.alignItems = "center";
+          li.style.justifyContent = "space-between";
+          li.style.gap = "6px";
+          li.style.padding = "3px 0";
+
+          const left = document.createElement("div");
+          const unit = h.unit || "minutes";
+          left.textContent = `${h.name} – ${h.goalMinutes} ${unit}`;
+
+          const del = document.createElement("button");
+          del.type = "button";
+          del.textContent = "×";
+          del.style.border = "none";
+          del.style.borderRadius = "999px";
+          del.style.padding = "2px 7px";
+          del.style.fontSize = "11px";
+          del.style.cursor = "pointer";
+          del.style.background = "transparent";
+          del.style.color = "#9ca3af";
+          del.addEventListener("click", () => {
+            const current = getSetupHabits();
+            current.splice(idx, 1);
+            setSetupHabits(current);
+            renderSetupHabits();
+          });
+
+          li.appendChild(left);
+          li.appendChild(del);
+          setupHabitsList.appendChild(li);
+        });
+      }
+
+      function showScreen(name) {
+        if (name === "setup") {
+          screenSetup.classList.add("active");
+          screenDaily.classList.remove("active");
+        } else {
+          screenDaily.classList.add("active");
+          screenSetup.classList.remove("active");
+        }
+      }
+
+      function setStatus(el, msg, ok = true) {
+        el.textContent = msg || "";
+        el.className = "status-bar " + (ok ? "status-ok" : "status-error");
+      }
+
+      function api(path, options = {}) {
+        return fetch(API_BASE + path, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        }).then(async (res) => {
+          const text = await res.text();
+          let json;
+          try {
+            json = text ? JSON.parse(text) : null;
+          } catch {
+            json = text;
+          }
+          if (!res.ok) {
+            const msg =
+              (json && json.error) ||
+              (typeof json === "string" ? json : res.statusText);
+            throw new Error(msg || "Request failed");
+          }
+          return json;
+        });
+      }
+
+      function updatePhaseUI(phase, lotusStatus, pct, day) {
+        const p = (phase || "mud").toLowerCase();
+        const l = (lotusStatus || "seedling").toLowerCase();
+        phaseDot.className = "phase-dot";
+        if (p === "mud") phaseDot.classList.add("phase-mud");
+        else if (p === "stem") phaseDot.classList.add("phase-stem");
+        else if (p === "bloom") phaseDot.classList.add("phase-bloom");
+        else if (p === "thrive") phaseDot.classList.add("phase-thrive");
+
+        const phaseLabelText = p.toUpperCase();
+        phaseChipLabel.textContent = phaseLabelText;
+        lotusPhaseLabel.textContent =
+          p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+
+        lotusStageLabel.textContent =
+          (l.charAt(0).toUpperCase() + l.slice(1).toLowerCase()) +
+          " · " +
+          (Number(pct) || 0) +
+          "%";
+
+        const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+        growthFill.style.width = clamped + "%";
+        growthText.textContent = "Day " + (day || 1);
+
+        let expl;
+        if (p === "mud") {
+          expl =
+            "You’re in Mud. Only Lotus Sit is visible. Build the base: 2 minutes of stillness.";
+        } else if (p === "stem") {
+          expl =
+            "You’re in Stem. Tiny actions (10–20% of your goals) begin to rise above the water.";
+        } else if (p === "bloom") {
+          expl =
+            "You’re in Bloom. Habits now carry real weight (about 50–70% of your goals).";
+        } else {
+          expl =
+            "You’re in Thrive. The system runs at full depth—100% intensity, but still gentle and sustainable.";
+        }
+        phaseExplanation.textContent = expl;
+      }
+
+      function renderChecklist(items) {
+        checklistEl.innerHTML = "";
+        if (!Array.isArray(items) || items.length === 0) {
+          checklistEl.innerHTML =
+            '<li style="font-size:11px;opacity:0.7">No checklist items.</li>';
+          return;
+        }
+        for (const it of items) {
+          const li = document.createElement("li");
+          const circle = document.createElement("div");
+          circle.className = "check-circle" + (it.completed ? " completed" : "");
+          circle.textContent = it.completed ? "✓" : "";
+          const text = document.createElement("div");
+          text.textContent = it.description;
+          li.appendChild(circle);
+          li.appendChild(text);
+          checklistEl.appendChild(li);
+        }
+      }
+
+      function renderHabits(habits) {
+        habitsListEl.innerHTML = "";
+        if (!Array.isArray(habits) || habits.length === 0) {
+          habitsListEl.innerHTML =
+            '<li style="font-size:11px;opacity:0.7">No habits visible today.</li>';
+          return;
+        }
+        habits.forEach((h) => {
+          const li = document.createElement("li");
+          li.className = "habit-row";
+
+          const main = document.createElement("div");
+          main.className = "habit-main";
+          const name = document.createElement("div");
+          name.className = "habit-name";
+          name.textContent = h.name || "(habit)";
+          const meta = document.createElement("div");
+          meta.className = "habit-meta";
+          const unit = h.unit || "minutes";
+          meta.textContent = `Today: ${h.currentMinutes} ${unit} (goal ${h.goalMinutes} ${unit})`;
+          main.appendChild(name);
+          main.appendChild(meta);
+
+          const action = document.createElement("div");
+          action.className = "habit-action";
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = "1";
+          input.value = h.currentMinutes || 1;
+          const btn = document.createElement("button");
+          btn.textContent = "Done";
+          btn.addEventListener("click", () => {
+            const mins = Number(input.value || "0");
+            if (!mins || mins <= 0) {
+              alert("Enter minutes > 0");
+              return;
+            }
+            completeHabit(h.id, mins);
+          });
+          action.appendChild(input);
+          action.appendChild(btn);
+
+          li.appendChild(main);
+          li.appendChild(action);
+          habitsListEl.appendChild(li);
+        });
+      }
+
+      async function loadDaily() {
+        const userId = getUserId();
+        const email = getLastEmail();
+        if (!userId) {
+          showScreen("setup");
+          return;
+        }
+        footerUser.textContent = email ? email + " · " : "";
+        setStatus(dailyStatus, "Loading day...", true);
+        btnRefresh.disabled = true;
+        try {
+          const data = await api(
+            `/daily-check-in?userId=${encodeURIComponent(userId)}`
+          );
+          updatePhaseUI(
+            data.phase,
+            data.lotusStatus,
+            data.growthPercent,
+            data.dayInProgram
+          );
+          renderChecklist(data.checklist || []);
+          renderHabits(data.habits || []);
+          setStatus(dailyStatus, "You’re ready for today’s practice.", true);
+        } catch (e) {
+          setStatus(dailyStatus, e.message || "Failed to load day.", false);
+        } finally {
+          btnRefresh.disabled = false;
+        }
+      }
+
+      async function completeHabit(habitId, minutes) {
+        const userId = getUserId();
+        if (!userId) {
+          alert("Please set up your journey first.");
+          return;
+        }
+        setStatus(dailyStatus, "Recording completion...", true);
+        try {
+          await api(
+            `/complete-task?userId=${encodeURIComponent(userId)}`,
+            {
+              method: "POST",
+              body: JSON.stringify({ habitId, minutes }),
+            }
+          );
+          setStatus(dailyStatus, "Nice. Updated today’s progress.", true);
+          await loadDaily();
+        } catch (e) {
+          setStatus(
+            dailyStatus,
+            e.message || "Failed to record completion.",
+            false
+          );
+        }
+      }
+
+      // populate unit dropdown
+      if (habitUnitSelectEl) {
+        ["minutes", "pages", "reps"].forEach((u) => {
+          const opt = document.createElement("option");
+          opt.value = u;
+          opt.textContent = u.charAt(0).toUpperCase() + u.slice(1);
+          habitUnitSelectEl.appendChild(opt);
+        });
+        habitUnitSelectEl.value = "minutes";
+      }
+
+      btnAddHabit.addEventListener("click", () => {
+        const name = habitNameInput.value.trim();
+        const mins = Number(habitMinutesInput.value || "0");
+        if (!name || !mins) {
+          setStatus(
+            setupStatus,
+            "Enter a habit name and minutes > 0 before adding.",
+            false
+          );
+          return;
+        }
+        const habits = getSetupHabits();
+        const unit = (habitUnitSelectEl && habitUnitSelectEl.value) || "minutes";
+        habits.push({ name, goalMinutes: mins, unit });
+        setSetupHabits(habits);
+        habitNameInput.value = "";
+        habitMinutesInput.value = "";
+        renderSetupHabits();
+        setStatus(setupStatus, "", true);
+      });
+
+      btnBegin.addEventListener("click", async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+          setStatus(setupStatus, "Enter an email to identify your journey.", false);
+          return;
+        }
+        const habits = getSetupHabits();
+        if (habits.length === 0) {
+          setStatus(setupStatus, "Add at least one habit before starting.", false);
+          return;
+        }
+
+        btnBegin.disabled = true;
+        setStatus(setupStatus, "Creating your lotus...", true);
+        try {
+          const data = await api("/register", {
+            method: "POST",
+            body: JSON.stringify({ email, habits }),
+          });
+          if (data && data.userId) {
+            setUserId(data.userId);
+            setLastEmail(email);
+            setStatus(setupStatus, "Journey created. Loading today...", true);
+            showScreen("daily");
+            await loadDaily();
+          } else {
+            setStatus(
+              setupStatus,
+              "Registered, but did not receive a userId.",
+              false
+            );
+          }
+        } catch (e) {
+          setStatus(
+            setupStatus,
+            e.message || "Failed to create your journey.",
+            false
+          );
+        } finally {
+          btnBegin.disabled = false;
+        }
+      });
+
+      btnRefresh.addEventListener("click", loadDaily);
+
+      footerLink.addEventListener("click", () => {
+        showScreen("setup");
+        setStatus(setupStatus, "", true);
+      });
+
+      // Initial boot
+      const savedEmail = getLastEmail();
+      if (savedEmail) {
+        emailInput.value = savedEmail;
+      }
+      renderSetupHabits();
+      if (getUserId()) {
+        showScreen("daily");
+        loadDaily();
+      } else {
+        showScreen("setup");
+      }
+    </script>
+  </body>
+  </html>
+
