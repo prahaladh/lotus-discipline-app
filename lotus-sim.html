@@ -602,6 +602,16 @@
           localStorage.removeItem("lotus_user_id");
         }
       }
+      function getToken() {
+        return localStorage.getItem("lotus_token") || "";
+      }
+      function setToken(token) {
+        if (token) {
+          localStorage.setItem("lotus_token", token);
+        } else {
+          localStorage.removeItem("lotus_token");
+        }
+      }
       function setLastEmail(email) {
         localStorage.setItem("lotus_email", email || "");
       }
@@ -688,8 +698,13 @@
       }
 
       function api(path, options = {}) {
+        const headers = { "Content-Type": "application/json" };
+        const token = getToken();
+        if (token) {
+          headers["Authorization"] = "Bearer " + token;
+        }
         return fetch(API_BASE + path, {
-          headers: { "Content-Type": "application/json" },
+          headers,
           ...options,
         }).then(async (res) => {
           const text = await res.text();
@@ -819,9 +834,10 @@
       }
 
       async function loadDaily() {
+        const token = getToken();
         const userId = getUserId();
         const email = getLastEmail();
-        if (!userId) {
+        if (!token) {
           showScreen("setup");
           return;
         }
@@ -829,9 +845,7 @@
         setStatus(dailyStatus, "Loading day...", true);
         btnRefresh.disabled = true;
         try {
-          const data = await api(
-            `/daily-check-in?userId=${encodeURIComponent(userId)}`
-          );
+          const data = await api("/daily-check-in");
           updatePhaseUI(
             data.phase,
             data.lotusStatus,
@@ -849,15 +863,15 @@
       }
 
       async function completeHabit(habitId, minutes) {
-        const userId = getUserId();
-        if (!userId) {
+        const token = getToken();
+        if (!token) {
           alert("Please set up your journey first.");
           return;
         }
         setStatus(dailyStatus, "Recording completion...", true);
         try {
           await api(
-            `/complete-task?userId=${encodeURIComponent(userId)}`,
+            `/complete-task`,
             {
               method: "POST",
               body: JSON.stringify({ habitId, minutes }),
@@ -928,6 +942,9 @@
           if (data && data.userId) {
             setUserId(data.userId);
             setLastEmail(email);
+            if (data.token) {
+              setToken(data.token);
+            }
             setStatus(setupStatus, "Journey created. Loading today...", true);
             showScreen("daily");
             await loadDaily();

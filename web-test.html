@@ -426,6 +426,18 @@ Read,30</textarea
         storedUserIdEl.textContent = id || "none";
       }
 
+      function getToken() {
+        return localStorage.getItem("lotus_token") || "";
+      }
+
+      function setToken(token) {
+        if (token) {
+          localStorage.setItem("lotus_token", token);
+        } else {
+          localStorage.removeItem("lotus_token");
+        }
+      }
+
       function setStatus(el, msg, ok = true) {
         el.textContent = msg;
         el.className = "status " + (ok ? "ok" : "error");
@@ -513,10 +525,15 @@ Read,30</textarea
 
       async function apiRequest(path, options = {}) {
         const url = API_BASE + path;
+        const headers = {
+          "Content-Type": "application/json",
+        };
+        const token = getToken();
+        if (token) {
+          headers["Authorization"] = "Bearer " + token;
+        }
         const res = await fetch(url, {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           ...options,
         });
         const text = await res.text();
@@ -576,6 +593,9 @@ Read,30</textarea
           if (data && data.userId) {
             setUserId(data.userId);
           }
+          if (data && data.token) {
+            setToken(data.token);
+          }
           setStatus(registerStatus, "Registered successfully", true);
           responseBox.textContent = safeJson(data);
         } catch (e) {
@@ -587,21 +607,20 @@ Read,30</textarea
 
       clearUserBtn.addEventListener("click", () => {
         setUserId("");
+        setToken("");
         setStatus(registerStatus, "Cleared stored userId", true);
       });
 
       async function refreshDailyCheckin() {
-        const userId = getUserId();
-        if (!userId) {
-          setStatus(lotusStatusMsg, "Register first to get a userId", false);
+        const token = getToken();
+        if (!token) {
+          setStatus(lotusStatusMsg, "Register first to get a token", false);
           return;
         }
         checkinBtn.disabled = true;
         setStatus(lotusStatusMsg, "Loading daily check‑in...", true);
         try {
-          const data = await apiRequest(
-            `/daily-check-in?userId=${encodeURIComponent(userId)}`
-          );
+          const data = await apiRequest("/daily-check-in");
           responseBox.textContent = safeJson(data);
           updatePhaseVisual(data.phase, data.lotusStatus, data.growthPercent);
           renderHabits(data.habits || []);
@@ -614,17 +633,15 @@ Read,30</textarea
       }
 
       async function fetchLotusStatusOnly() {
-        const userId = getUserId();
-        if (!userId) {
-          setStatus(lotusStatusMsg, "Register first to get a userId", false);
+        const token = getToken();
+        if (!token) {
+          setStatus(lotusStatusMsg, "Register first to get a token", false);
           return;
         }
         lotusStatusBtn.disabled = true;
         setStatus(lotusStatusMsg, "Loading lotus status...", true);
         try {
-          const data = await apiRequest(
-            `/lotus-status?userId=${encodeURIComponent(userId)}`
-          );
+          const data = await apiRequest("/lotus-status");
           responseBox.textContent = safeJson(data);
           updatePhaseVisual(data.phase, data.lotusStatus, data.growthPercent);
           setStatus(lotusStatusMsg, "Lotus status loaded", true);
@@ -640,19 +657,16 @@ Read,30</textarea
       }
 
       async function completeHabit(habitId, minutes) {
-        const userId = getUserId();
-        if (!userId) {
-          alert("Register first to get a userId");
+        const token = getToken();
+        if (!token) {
+          alert("Register first to get a token");
           return;
         }
         try {
-          const data = await apiRequest(
-            `/complete-task?userId=${encodeURIComponent(userId)}`,
-            {
-              method: "POST",
-              body: JSON.stringify({ habitId, minutes }),
-            }
-          );
+          const data = await apiRequest("/complete-task", {
+            method: "POST",
+            body: JSON.stringify({ habitId, minutes }),
+          });
           responseBox.textContent = safeJson(data);
           await refreshDailyCheckin();
         } catch (e) {
@@ -665,6 +679,7 @@ Read,30</textarea
 
       // Init UI from localStorage.
       setUserId(getUserId());
+      getToken();
       updatePhaseVisual("mud", "seedling", 0);
       renderHabits([]);
     </script>

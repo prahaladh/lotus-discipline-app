@@ -24,11 +24,14 @@ func setupRouter() *gin.Engine {
 	}))
 
 	api := router.Group("/api")
+	api.POST("/register", registerHandler)
+
+	protected := api.Group("/")
+	protected.Use(authMiddleware())
 	{
-		api.POST("/register", registerHandler)
-		api.GET("/daily-check-in", dailyCheckinHandler)
-		api.POST("/complete-task", completeTaskHandler)
-		api.GET("/lotus-status", lotusStatusHandler)
+		protected.GET("/daily-check-in", dailyCheckinHandler)
+		protected.POST("/complete-task", completeTaskHandler)
+		protected.GET("/lotus-status", lotusStatusHandler)
 	}
 
 	return router
@@ -108,17 +111,24 @@ func registerHandler(c *gin.Context) {
 		return
 	}
 
-	// For now, return the userId so the mobile app can use it as a query param.
+	// Issue a JWT for the new / existing user.
+	token, err := generateToken(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"userId":  userID,
+		"token":   token,
 		"message": "user registered",
 	})
 }
 
 func dailyCheckinHandler(c *gin.Context) {
-	userID := c.Query("userId")
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userId query parameter is required"})
+	userID, ok := userIDFromContext(c)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in context"})
 		return
 	}
 
@@ -253,9 +263,9 @@ func dailyCheckinHandler(c *gin.Context) {
 }
 
 func completeTaskHandler(c *gin.Context) {
-	userID := c.Query("userId")
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userId query parameter is required"})
+	userID, ok := userIDFromContext(c)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in context"})
 		return
 	}
 
@@ -292,9 +302,9 @@ func completeTaskHandler(c *gin.Context) {
 }
 
 func lotusStatusHandler(c *gin.Context) {
-	userID := c.Query("userId")
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userId query parameter is required"})
+	userID, ok := userIDFromContext(c)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in context"})
 		return
 	}
 
