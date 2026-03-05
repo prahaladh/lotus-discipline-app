@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const userIDContextKey = "userId"
@@ -70,6 +71,16 @@ func authMiddleware() gin.HandlerFunc {
 		c.Set(userIDContextKey, claims.UserID)
 		c.Next()
 	}
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 func userIDFromContext(c *gin.Context) (string, bool) {
