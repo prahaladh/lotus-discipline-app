@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/api/register"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "username": "newuser",
+        "password": "securepassword",
+        "habits": [
+            {
+                "name": "Lotus Sit",
+                "goalMinutes": 20,
+                "unit": "minutes"
+            },
+            {
+                "name": "Reading",
+                "goalMinutes": 30,
+                "unit": "pages"
+            }
+        ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var jsonData = pm.response.json();
+      if (jsonData.token) {
+          pm.collectionVariables.set("token", jsonData.token);
+      }
+    language: text/javascript
+order: 2000

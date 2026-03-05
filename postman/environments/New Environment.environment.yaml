@@ -1,0 +1,8 @@
+name: New Environment
+values:
+  - key: local
+    value: ''
+    enabled: true
+  - key: baseUrl
+    value: ''
+    enabled: true

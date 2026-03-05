@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/login"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "username": "newuser",
+        "password": "securepassword"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var jsonData = pm.response.json();
+      if (jsonData.token) {
+          pm.collectionVariables.set("token", jsonData.token);
+      }
+    language: text/javascript
+order: 3000

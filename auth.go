@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -21,7 +22,9 @@ type jwtClaims struct {
 func jwtSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		// In dev you can set a simple secret, but in prod this must be strong.
+		if gin.Mode() == gin.ReleaseMode {
+			log.Fatal("FATAL: JWT_SECRET environment variable not set in production mode")
+		}
 		secret = "dev-secret-change-me"
 	}
 	return []byte(secret)
@@ -91,4 +94,3 @@ func userIDFromContext(c *gin.Context) (string, bool) {
 	id, ok := v.(string)
 	return id, ok
 }
-

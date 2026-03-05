@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -26,6 +27,7 @@ func setupRouter() *gin.Engine {
 
 	api := router.Group("/api")
 	{
+		api.GET("/health", healthCheckHandler)
 		api.POST("/register", registerHandler)
 		api.POST("/login", loginHandler)
 
@@ -37,6 +39,22 @@ func setupRouter() *gin.Engine {
 		}
 	}
 	return router
+}
+
+func healthCheckHandler(c *gin.Context) {
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "Database connection not initialized"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Second)
+	defer cancel()
+
+	if err := db.Ping(ctx); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "Database unreachable"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 }
 
 func loginHandler(c *gin.Context) {
@@ -67,7 +85,12 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := generateToken(userID)
+	token, err := generateToken(userID)
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"userId": userID, "token": token})
 }
 
@@ -91,12 +114,17 @@ func dailyCheckinHandler(c *gin.Context) {
 	phase := determinePhase(day)
 	status, pct := lotusStatusForPhase(phase, day)
 
-	rows, _ := db.Query(ctx, `
+	rows, err := db.Query(ctx, `
 		SELECT h.id, h.name, h.goal_minutes, h.unit,
 		EXISTS (SELECT 1 FROM habit_completions WHERE habit_id = h.id AND user_id = $1 AND completed_on = CURRENT_DATE)
 		FROM habits h 
 		JOIN user_habits uh ON uh.habit_id = h.id 
 		WHERE uh.user_id = $1 ORDER BY h.name`, userID)
+	if err != nil {
+		log.Printf("Database error querying habits: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
 	defer rows.Close()
 
 	var habits []Habit
@@ -104,7 +132,9 @@ func dailyCheckinHandler(c *gin.Context) {
 		var h Habit
 		var completed bool
 		rows.Scan(&h.ID, &h.Name, &h.GoalMinutes, &h.Unit, &completed)
-		if phase == PhaseMud && h.Name != "Lotus Sit" { continue }
+		if phase == PhaseMud && h.Name != "Lotus Sit" {
+			continue
+		}
 		h.CurrentMins = scaledMinutes(h.GoalMinutes, phase)
 		h.Completed = completed
 		habits = append(habits, h)
@@ -116,7 +146,11 @@ func dailyCheckinHandler(c *gin.Context) {
 }
 
 func completeTaskHandler(c *gin.Context) {
-	val, _ := c.Get("userId")
+	val, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
 	userID := val.(string)
 	var req CompleteTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,10 +159,10 @@ func completeTaskHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	_, err := db.Exec(ctx, 
+	_, err := db.Exec(ctx,
 		"INSERT INTO habit_completions (user_id, habit_id, minutes, completed_on) VALUES ($1, $2, $3, CURRENT_DATE) ON CONFLICT (user_id, habit_id, completed_on) DO UPDATE SET minutes = EXCLUDED.minutes",
 		userID, req.HabitID, req.Minutes)
-	
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Record fail"})
 		return
@@ -150,20 +184,63 @@ func registerHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	tx, _ := db.Begin(ctx)
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
 	defer tx.Rollback(ctx)
 
 	var userID string
-	tx.QueryRow(ctx, "INSERT INTO users (username, password_hash) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash RETURNING id", req.Username, passwordHash).Scan(&userID)
-	tx.Exec(ctx, "INSERT INTO user_programs (user_id, start_date) VALUES ($1, CURRENT_DATE) ON CONFLICT DO NOTHING", userID)
+	// Use ON CONFLICT DO NOTHING and check if a row was returned.
+	// If no row is returned, the user already exists.
+	err = tx.QueryRow(ctx, "INSERT INTO users (username, password_hash) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING RETURNING id", req.Username, passwordHash).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// This means the user already exists
+			c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
+			return
+		}
+		log.Printf("Failed to insert user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
+
+	_, err = tx.Exec(ctx, "INSERT INTO user_programs (user_id, start_date) VALUES ($1, CURRENT_DATE) ON CONFLICT DO NOTHING", userID)
+	if err != nil {
+		log.Printf("Failed to insert user_programs: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
 
 	for _, h := range req.Habits {
 		var hID string
-		tx.QueryRow(ctx, "INSERT INTO habits (name, goal_minutes, unit) VALUES ($1, $2, $3) ON CONFLICT (name) DO UPDATE SET goal_minutes=EXCLUDED.goal_minutes, unit=EXCLUDED.unit RETURNING id", h.Name, h.GoalMinutes, h.Unit).Scan(&hID)
-		tx.Exec(ctx, "INSERT INTO user_habits (user_id, habit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", userID, hID)
+		err = tx.QueryRow(ctx, "INSERT INTO habits (name, goal_minutes, unit) VALUES ($1, $2, $3) ON CONFLICT (name) DO UPDATE SET goal_minutes=EXCLUDED.goal_minutes, unit=EXCLUDED.unit RETURNING id", h.Name, h.GoalMinutes, h.Unit).Scan(&hID)
+		if err != nil {
+			log.Printf("Failed to insert habit: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+			return
+		}
+		_, err = tx.Exec(ctx, "INSERT INTO user_habits (user_id, habit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", userID, hID)
+		if err != nil {
+			log.Printf("Failed to insert user_habit: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+			return
+		}
 	}
 
-	tx.Commit(ctx)
-	token, _ := generateToken(userID)
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
+
+	token, err := generateToken(userID)
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"userId": userID, "token": token})
 }

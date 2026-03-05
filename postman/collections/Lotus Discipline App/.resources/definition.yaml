@@ -1,0 +1,5 @@
+$kind: collection
+description: Collection for the Lotus Discipline App API
+variables:
+  baseUrl: http://localhost:8080
+  token: ""

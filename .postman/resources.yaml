@@ -1,0 +1,12 @@
+# Use this workspace to collaborate
+workspace:
+  id: da93cc17-32f5-46ac-86d3-45dee0d170a2
+cloudResources:
+  collections:
+    ..\postman\collections\Lotus Discipline App: a56d1ced-af1f-413b-95c6-479ffb5de2a5
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

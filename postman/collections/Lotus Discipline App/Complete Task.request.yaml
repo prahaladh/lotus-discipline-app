@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/complete-task"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "habitId": "<REPLACE_WITH_HABIT_ID>",
+        "minutes": 20
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+order: 5000
