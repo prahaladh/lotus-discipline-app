@@ -8,6 +8,7 @@ import (
 
 func main() {
 	initDB()
+	InitRedis()
 
 	router := setupRouter()
 

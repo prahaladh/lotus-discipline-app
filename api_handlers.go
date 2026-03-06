@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -101,10 +102,22 @@ func dailyCheckinHandler(c *gin.Context) {
 		return
 	}
 	userID := val.(string)
+
+	// Try to get the data from Redis first
+	cacheKey := "daily-check-in:" + userID
+	cachedData, err := GetCache(cacheKey)
+	if err == nil {
+		var response DailyCheckinResponse
+		if json.Unmarshal([]byte(cachedData), &response) == nil {
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
 	ctx := c.Request.Context()
 
 	var startDate time.Time
-	err := db.QueryRow(ctx, "SELECT start_date FROM user_programs WHERE user_id = $1", userID).Scan(&startDate)
+	err = db.QueryRow(ctx, "SELECT start_date FROM user_programs WHERE user_id = $1", userID).Scan(&startDate)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Program not found"})
 		return
@@ -140,9 +153,17 @@ func dailyCheckinHandler(c *gin.Context) {
 		habits = append(habits, h)
 	}
 
-	c.JSON(http.StatusOK, DailyCheckinResponse{
+	response := DailyCheckinResponse{
 		Phase: string(phase), LotusStatus: string(status), GrowthPct: pct, DayInProgram: day, Habits: habits,
-	})
+	}
+
+	// Cache the response in Redis for 5 minutes
+	jsonData, err := json.Marshal(response)
+	if err == nil {
+		SetCache(cacheKey, jsonData, 5*time.Minute)
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func completeTaskHandler(c *gin.Context) {
@@ -167,6 +188,11 @@ func completeTaskHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Record fail"})
 		return
 	}
+
+	// Invalidate the cache for the user
+	cacheKey := "daily-check-in:" + userID
+	rdb.Del(ctx, cacheKey)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Logged"})
 }
 
