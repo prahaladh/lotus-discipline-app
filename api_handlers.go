@@ -37,6 +37,10 @@ func setupRouter() *gin.Engine {
 		{
 			protected.GET("/daily-check-in", dailyCheckinHandler)
 			protected.POST("/complete-task", completeTaskHandler)
+			// Only expose dev tools in non-release environments
+			if gin.Mode() != gin.ReleaseMode {
+				protected.POST("/dev/set-day", devSetDayHandler)
+			}
 		}
 	}
 	return router
@@ -269,4 +273,44 @@ func registerHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"userId": userID, "token": token})
+}
+
+func devSetDayHandler(c *gin.Context) {
+	val, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No user ID"})
+		return
+	}
+	userID := val.(string)
+
+	var req struct {
+		Day int `json:"day" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate new start date: Today - (Day - 1) days
+	newStartDate := time.Now().AddDate(0, 0, -(req.Day - 1))
+
+	ctx := c.Request.Context()
+	_, err := db.Exec(ctx, "UPDATE user_programs SET start_date = $1 WHERE user_id = $2", newStartDate, userID)
+	if err != nil {
+		log.Printf("Failed to update start date: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error"})
+		return
+	}
+
+	// Invalidate cache
+	cacheKey := "daily-check-in:" + userID
+	if rdb != nil {
+		rdb.Del(ctx, cacheKey)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Time travel successful",
+		"day":     req.Day,
+		"phase":   determinePhase(req.Day),
+	})
 }
